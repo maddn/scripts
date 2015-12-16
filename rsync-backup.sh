@@ -1,24 +1,37 @@
 #/bin/bash
 
-echo "*** Backing up Personal folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Personal /mnt/backup
+do_rsync() {
+echo "*** Backing up $1 ***"
+rsync $DRY_RUN \
+      --recursive \
+      --times \
+      --verbose \
+      --modify-window=1 \
+      --exclude='.localized' \
+      --exclude='.DS_Store' \
+      --exclude='$RECYCLE.BIN/' \
+      --exclude='.picasa.ini' \
+      --exclude='.picasa.ini' \
+      --exclude='iMovie Library.imovielibrary' \
+      --exclude='iMovie Theater.theater' \
+      --exclude='.svn' \
+      --exclude='.git' \
+      $2 $1 /mnt/backup
 echo
-echo "*** Backing up Work folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Work /mnt/backup
-echo
-echo "*** Backing up Pictures folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Pictures /mnt/backup
-echo
-echo "*** Backing up Software folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Software /mnt/backup
-echo
-echo "*** Backing up Music folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Music /mnt/backup
-echo
-echo "*** Backing up Movies folder ***"
-rsync -rtv --modify-window=1 --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Movies /mnt/backup
-echo
-echo "*** Backing up Old-Stuff folder ***"
-rsync -rtv --modify-window=1 --delete --exclude='.localized' --exclude='.DS_Store' --exclude='$RECYCLE.BIN/' ~/Old-Stuff /mnt/backup
-echo
+}
+
+if [ "$1" == "-d" ]; then
+   DRY_RUN="--dry-run"
+else
+   unset DRY_RUN
+fi
+
+echo $DRY_RUN
+do_rsync ~/Personal --delete
+do_rsync ~/Pictures --delete
+do_rsync ~/Music --delete
+do_rsync ~/Movies
+do_rsync ~/Software --delete
+do_rsync ~/Work --delete
+do_rsync ~/Old-Stuff --delete
 
