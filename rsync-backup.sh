@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 do_rsync() {
 echo "*** Backing up $1 ***"
@@ -31,12 +31,11 @@ fi
 echo $DRY_RUN
 do_rsync ~/Personal/ personal --delete
 do_rsync ~/Pictures/ pictures --delete
-do_rsync ~/Music/ music
+do_rsync ~/Music/ music --delete
 do_rsync ~/Movies/ video
 do_rsync ~/nso/ nso --delete
 do_rsync ~/Software/ software --delete
 do_rsync ~/Work/ work --delete
-do_rsync ~/Old-Stuff/ old-stuff --delete
 
 
 
