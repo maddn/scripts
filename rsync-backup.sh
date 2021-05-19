@@ -16,8 +16,17 @@ rsync $DRY_RUN \
       --exclude='Photo Booth Library' \
       --exclude='iMovie Library.imovielibrary' \
       --exclude='iMovie Theater.theater' \
+      --exclude='TV Library.tvlibrary' \
+      --exclude='Photos Library.photoslibrary' \
+      --exclude='Music Library.musiclibrary' \
+      --exclude='Previous Libraries.localized' \
+      --exclude='iTunes' \
+      --exclude='Audio Music Apps' \
+      --exclude='GarageBand' \
       --exclude='.svn' \
       --exclude='.git' \
+      --exclude='node_modules' \
+      --exclude='@eaDir' \
       $3 $1 admin@192.168.1.100::$2
 echo
 }
