@@ -1,34 +1,24 @@
 #!/bin/bash
 
 do_rsync() {
-echo "*** Backing up $1 ***"
-rsync $DRY_RUN \
-      --recursive \
-      --times \
+    echo "*** Backing up $1 ***"
+    eval "rsync $DRY_RUN \
+      --archive \
       --verbose \
-      --links \
       --modify-window=1 \
       --rsh=ssh \
-      --exclude='.localized' \
       --exclude='.DS_Store' \
       --exclude='$RECYCLE.BIN/' \
-      --exclude='.picasa.ini' \
-      --exclude='Photo Booth Library' \
-      --exclude='iMovie Library.imovielibrary' \
-      --exclude='iMovie Theater.theater' \
-      --exclude='TV Library.tvlibrary' \
-      --exclude='Photos Library.photoslibrary' \
-      --exclude='Music Library.musiclibrary' \
-      --exclude='Previous Libraries.localized' \
-      --exclude='iTunes' \
-      --exclude='Audio Music Apps' \
-      --exclude='GarageBand' \
       --exclude='.svn' \
       --exclude='.git' \
       --exclude='node_modules' \
+      --exclude='.localized' \
+      --exclude='TV Library.tvlibrary' \
+      --exclude='Photos Library.photoslibrary' \
+      --exclude='Music Library.musiclibrary' \
+      --exclude='GarageBand' \
       --exclude='@eaDir' \
-      $3 $1 admin@192.168.1.100::$2
-echo
+      $3 $1 maddn@192.168.1.100::$2"
 }
 
 if [ "$1" == "-d" ]; then
@@ -38,13 +28,9 @@ else
 fi
 
 echo $DRY_RUN
+do_rsync ~/nso/ nso --delete
+do_rsync ~/Work/ work --delete
 do_rsync ~/Personal/ personal --delete
 do_rsync ~/Pictures/ pictures --delete
 do_rsync ~/Music/ music --delete
-do_rsync ~/Movies/ video
-do_rsync ~/nso/ nso --delete
-do_rsync ~/Software/ software --delete
-do_rsync ~/Work/ work --delete
-
-
-
+do_rsync "~/Movies/iMovie\ Library.imovielibrary/" "video/iMovie\ Library.imovielibrary" --delete
