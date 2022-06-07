@@ -22,16 +22,14 @@ readonly HOME_DIR=/home/mmaddern
 
 readonly SESSIONS_DIR=${HOME_DIR}/Downloads     # Where the SessionDetails files usually go
 readonly SESSIONS=/tmp/${FILE}-all.csv          # Temp file to store ALL Sessions downloaded
-readonly DCLOUD=/tmp/${FILE}-stripped.csv       # Redirection file (remove header, comments and empty lines)
-readonly ADHOC=${HOME}/SessionAdHoc.csv         # Any Sessions that are not part of dCloud - shared by others directly
 
-readonly FORMAT="%3s  %-7s %s\n"                # Formatter for displaying on screen
+readonly FORMAT="%3s  %-7s %-4s %s\n"           # Formatter for displaying on screen
 readonly SCRIPT_NAME=$(basename $0)             # This script's name
 readonly PID_FILE=/tmp/openconnect.pid
 
 readonly PORT_FORWARDING=13389:198.18.133.252:3389
 
-DOMAIN=rtp                                      # Default dCloud domain
+DEFAULT_DATACENTRE=rtp                          # Default dCloud domain
 
 ######################################################################
 function prg_usage () {
@@ -57,22 +55,29 @@ function merge() {
   echo "Merging Session Files ... [${SESSIONS_DIR}]"
   cp /dev/null "${SESSIONS}" # Initialize file - blank it
 
-  find ${SESSIONS_DIR} -maxdepth 1 -type f -name 'SessionDetails*.csv' \
-    -exec cat "{}" \; \
-    | grep -v "Session Id" \
-    | cut -d "," -f 1,2,3,4 >> ${SESSIONS}
+  for filename in ${SESSIONS_DIR}/SessionDetails*.csv; do
+    local datacentre=${filename##${SESSIONS_DIR}/SessionDetails}
+    datacentre=${datacentre%%.csv}
+    if [[ ${#datacentre} -eq 4 && ${datacentre:0:1} == '.' ]]; then
+      datacentre=${datacentre:1:3}
+    else
+      datacentre=${DEFAULT_DATACENTRE}
+    fi
+    server="https://dcloud-${datacentre}-anyconnect.cisco.com"
 
-  if [[ -f ${ADHOC} ]]; then
-    echo "Merging AdHoc File ...    [${ADHOC}]";
-    cat ${ADHOC} | grep -v "Session Id" >> ${SESSIONS};
-  fi
+    while IFS=',' read -r sid title user pass rest || [[ -n ${sid} ]]; do
+      if [[ -n ${sid} && ${sid} != "Session Id" && ${sid:0:1} != "#" ]]; then
+        echo "${sid},${datacentre},${title},${user},${pass},${server}" >> ${SESSIONS}
+      fi
+    done < ${filename}
+  done
 
-  grep -v "^#" ${SESSIONS} | grep -v "^[[:space:]]*$"  | sort -u  > ${DCLOUD}
-
-  if [[ ! -s ${DCLOUD} ]]; then
-    echo "No sessions found"
-    cleanup
-    exit 1
+  if [[ -f ${SESSIONS_DIR}/SessionsOther.csv ]]; then
+    while IFS=',' read -r sid server_name title user pass server rest || [[ -n ${sid} ]]; do
+      if [[ -n ${sid} && ${sid} != "Session Id" && ${sid:0:1} != "#" ]]; then
+        echo "${sid},${server_name},${title},${user},${pass},${server}" >> ${SESSIONS}
+      fi
+    done < ${SESSIONS_DIR}/SessionsOther.csv
   fi
 
 }
@@ -80,19 +85,18 @@ function merge() {
 ######################################################################
 function present () {
 
-  echo "Current domain set to ... [dcloud-${DOMAIN}-anyconnect.cisco.com]"
   echo
   echo "#####################################"
   echo "# Select a dCloud instance to login #"
   echo "#####################################"
   echo
 
-  printf "${FORMAT}" "" "ID" "Title";
+  printf "${FORMAT}" "" "ID" "DC" "Title";
   local sid title rest
   local i=0
-  while ((i++)); IFS=',' read -r sid title rest; do
-    printf "${FORMAT}" "${i})" ${sid} "${title}";
-  done < ${DCLOUD}
+  while ((i++)); IFS=',' read -r sid datacentre title rest; do
+    printf "${FORMAT}" "${i})" ${sid} "${datacentre^^}" "${title}";
+  done < ${SESSIONS}
   echo
 
   NUM_SESSIONS=$((${i}-1))
@@ -141,19 +145,20 @@ function login () {
 
   local sid title user pass
   local i=0
-  while ((i++)); IFS=',' read -r sid title user pass; [[ ${i} -lt $1 ]]; do
+  while ((i++)); IFS=',' read -r sid datacentre title user pass server; [[ ${i} -lt $1 ]]; do
     true
-  done < ${DCLOUD}
+  done < ${SESSIONS}
 
   user=${user%%;*}
   pass=${pass##=\"}; pass=${pass%\"}
+  server=${server%%$'\r'}
   echo "Connecting to session ID [${sid}] as user [${user}]"
   echo
 
   echo ${pass} | openconnect --quiet --no-dtls \
     --user=${user} --passwd-on-stdin \
     --background --pid-file=${PID_FILE} \
-    https://dcloud-${DOMAIN}-anyconnect.cisco.com
+    ${server}
 
   local status=$?
   local start=$(date)
@@ -184,7 +189,7 @@ function login () {
 ######################################################################
 function cleanup() {
   # Delete temp / redirection files
-  rm -f ${SESSIONS} ${DCLOUD}
+  rm -f ${SESSIONS}
 }
 
 ######################################################################
@@ -244,7 +249,7 @@ function main () {
 
   local input=$1
   if [[ "${input:0:4}" == "dom=" ]]; then
-    DOMAIN=${input:4}
+    DEFAULT_DATACENTRE=${input:4}
     shift
   fi
 
